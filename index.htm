@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <title>TP Volet 1</title>
+
+        <style>
+            canvas {
+                border: 10px solid rgb(72, 255, 0);
+                position: absolute; 
+                top: 0px; 
+                left: 0px; 
+                right: 0px; 
+                bottom: 0px; 
+                margin: auto;
+            }
+            body {
+                text-align: center;
+                background-image: url("images/webBackground.png");
+            }
+           
+    
+        </style>
+    </head>
+
+    <body>
+        
+        <!-- Créer la balise canvas -->
+        <canvas width="842" height="720"></canvas>
+       
+        <script>
+            //Récupérer la balise canvas et définir son contexte de dessin en 2d
+            let leCanvas = document.querySelector("canvas");
+            let ctx = leCanvas.getContext("2d");
+         
+            //L'image pour l'intro du jeu
+            leCanvas.style.backgroundImage = "url('images/background.gif')";
+           
+            //l'objet du personnage, qu'on pourra déplacer et animer avec les touches
+            let perso = {
+                img: new Image(), //image
+                urlImage: "images/arretDroite.png", //url de l'image de départ
+                x: 0, //Position sur l'axe des x
+                y: 0, //Position sur l'axe des y
+                largeur: 76, //Largeur d'une vignette du personnage
+                hauteur: 150, //Hauteur d'une vignette du personnage
+                indexVignette: 0, //Première vignette
+                nbVignettes: 6, //Nombre de vignettes
+                sourceX: 0, //Coordonnée x de la vignette à afficher
+                vitesseX: 5, //Vitesse horizontale
+                estEnSaut: false,
+                vitesseY: 2,
+                gravite: 0.8
+            };
+
+            //Charger l'image initiale du personnage (arret vers la gauche)
+            perso.img.src = perso.urlImage;
+            //Le positionner sur l'axe des X et des Y au centre en en bas du canvas
+            perso.x = (leCanvas.width - perso.largeur) / 2;
+            perso.y = leCanvas.height - perso.hauteur;
+
+            //Déclaration de la variable fruit de type Objet
+            let fruit = {
+            img: new Image(), //image
+            urlImage: "images/fruit1.png", //On met le fruit 1 au démarrage
+            x: leCanvas.width * 0.25, //Position sur l'axe des x
+            y: leCanvas.height - 100, //Position sur l'axe des y
+            largeur: 25, //Largeur 
+            hauteur: 50, //Hauteur
+            }
+
+            //Charger l'image du fruit 1
+            fruit.img.src = fruit.urlImage;
+            //Score - le nombre de fruits ramassés
+            let score = 0;
+
+            //Variable pour gérer la fin du jeu
+            let finJeu = false;
+
+            //L'image pour la fin du jeu
+            let imageFinJeu = new Image();
+            imageFinJeu.src = "images/finJeu.png";
+            
+          
+
+            //Objet pour gérer les touches fléchées du clavier
+            let fleches = {
+            gauche: false,
+            droite: false,
+            haut: false
+            };
+
+            //Gestion des vies de Vivich
+            let vie = {
+                img: new Image(),
+                x: 0,
+                y: 0,
+                largeur: 64,
+                hauteur: 64,
+            };
+            vie.img.src = "images/vie.png";
+
+            let nombreVies = 3;
+
+            //Tableau pour stocker les spiders
+            let lesSpiders = [];
+
+            //Les sons
+            let sonFinJeu = new Audio("sons/sonFinJeu.mp3");
+            let sonCollisionSpider = new Audio("sons/sonFinJeu.mp3")
+            let sonCollecteFruit = new Audio("sons/EatingSound2.wav");
+            let musique = new Audio("sons/musiqueArcade.wav");
+            let sonJump = new Audio("sons/Jump.wav");
+            let sonViePlus = new Audio("sons/Power_up.wav");
+            
+            //Variable pour gérer le début du jeu : debutJeu
+            let debutJeu= false;
+
+            ////////////////////////////// DÉMARRAGE ET ÉVÉNEMENTS DU JEU ///////////////////////////////////
+
+            //Actualisation du jeu avec setInterval()
+            let intervalJeuID; //SERA définit PLUS TARD quand on débutera le jeu...
+
+            //Appel répétitif de la fonction pour gérer l'image du personnage à une cadence de 6 ips
+            let intervalImagePersoID; //SERA définit PLUS TARD quand on débutera le jeu...
+           
+            let intervalSpiderID;
+            //Écouteur sur le document pour détecter si des touches de clavier sont appuyées ou relâchées
+            document.addEventListener("keydown", presserTouche);
+            document.addEventListener("keyup", relacherTouche);
+            
+            /////////////////////////// LES FONCTIONS ////////////////////////////////////////////////////////////
+            
+            function debuterJeu() {
+                console.log("Le jeu est commencé...");
+                //On met l'image d'arrière-plan pour le jeu
+                leCanvas.style.backgroundImage = "url('images/backgroundVide.png')";
+                
+                //On part les setInterval du jeu
+                intervalJeuID = setInterval(actualiserJeu, 1000 / 60);
+
+                //On part l'appel répétitif de la fonction l'image du personnage à une cadence de 2.5 ips
+                 intervalImagePersoID = setInterval(gererImageDePerso, 1000 / 6);
+                //On met un spider à tous les 1/2 secondes
+                intervalSpiderID = setInterval(mettreUnSpider, 1000 / 2.5);
+                
+                //On fait jouer le son d'ambiance en boucle
+                musique.loop = true;
+                musique.play();
+                //Mettre un premier spider
+                mettreUnSpider();
+            }
+
+            //Actualiser l'affichage des objets et les actions du jeu
+            function actualiserJeu() {
+                //Effacer le contenu actuel du contexte de rendu du canvas
+                ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+
+                //Afficher les vies
+                afficherLesVies();
+
+                //Dessiner l'image des fruits
+                ctx.drawImage(fruit.img, fruit.x, fruit.y);
+
+                //Déplacer le personnage de Vivich
+                deplacerPerso();
+                
+                //Deplacer les roches
+                deplacerLesSpiders();
+
+                for (let unSpider of lesSpiders) {
+                    let siCollisionVivichEtSpider = detecterCollision(perso, unSpider);
+                    if (siCollisionVivichEtSpider == true) {
+                        //On fait jouer le son
+                        sonCollecteFruit.play();
+                        sonCollisionSpider.play();
+                        //On enlève cette roche du tableau des roches
+                        let index = lesSpiders.indexOf(unSpider);
+                        lesSpiders.splice(index, 1);
+                        //On enlève une vie à Vivich
+                        nombreVies--;
+                        /*
+                    Si Vivich n'a plus de vie c'est la fin du jeu
+                    on efface le canvas
+                    on affiche l'image de la fin du jeu
+                    On arrête les setInterval en exécution et ...
+                    On arrête l'exécution de cette boucle de programmation
+                    */
+                        if (nombreVies == 0) {
+                            finJeu = true;
+                            ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+                            leCanvas.style.backgroundImage = "url('images/backgroundVideo.gif')";  
+                            musique.pause();
+                            sonFinJeu.play();
+                            clearInterval(intervalJeuID);
+                            clearInterval(intervalSpiderID);
+                            clearInterval(intervalImagePersoID);
+                            break;
+                        }
+                    }
+                }
+                //Vérifier s'il y a une collision entre le perso et le diammant
+                let collisionPersoFruit = detecterCollision(perso, fruit);
+
+                //Si collision alors , change la position en X du diamant, on change d'image et on augmente le score
+                if (collisionPersoFruit == true) {
+                
+                //Modifier la position en X au hasard dans les limites du canvas
+                fruit.x = Math.random() * (leCanvas.width - fruit.largeur);
+    
+                //Pour obtenir les noms fruit1.png ou fruit2.png ou fruit3.png
+                fruit.img.src = "images/fruit" + Math.ceil(Math.random() * 4) + ".png";
+
+                //Augmenter de 1 le score pour le nombre de fruits ramassés
+                score += 1;
+                //Augmenter la vie de 1 pour chaque 10 fruits ramassés
+                if (nombreVies < 3 && score%10 == 0) {
+                nombreVies += 1;
+                sonViePlus.play();
+                }
+                //On fait jouer le son de la collecte d'un fruit
+                sonCollecteFruit.play();
+                }  
+                //Afficher le score
+                afficherScore();
+            }
+                 
+
+           //Afficher l'image de vie plusieurs fois selon la valeur de la variable nombreVies
+           function afficherLesVies() {
+                vie.x = 0;
+                for (let index = 0; index < nombreVies; index++) {
+                    vie.x = index * (vie.largeur + 20);
+                    //console.log(vie.x);
+                    ctx.drawImage(vie.img, vie.x, vie.y);
+                }
+            }
+
+            //Fonction qui ajoutera un spider à tous les 1/4 seconde
+            function mettreUnSpider() {
+                //Objet pour un spider
+                let spider = {
+                    img: new Image(),
+                    urlImage: "images/spider.png",
+                    x: entierHasard(0, leCanvas.width - 48),
+                    y: -48,
+                    largeur: 40,
+                    hauteur: 40,
+                    vitesseY: entierHasard(3, 7),
+                };
+                //Charger l'image de ce spider
+                spider.img.src = spider.urlImage;
+
+                //Mettre cette roche dans le tableau des spiders
+                lesSpiders.push(spider);
+            }
+
+            //Fonction pour calculer un nombre entier au hasard entre 2 valeurs
+            function entierHasard(nbMin, nbMax) {
+                let intervalle = nbMax - nbMin;
+                return nbMin + Math.round(Math.random() * intervalle);
+            }
+
+            //Fonction pour déplacer et dessiner le personnage
+            function deplacerPerso() {
+                //Calculer les futures positions du perso et définir la feuille de sprites à afficher
+                if (fleches.droite) {
+                    perso.x += perso.vitesseX;
+                    //Modifier la source de la feuille de sprites du blockynnage pour la course vers la droite
+                    perso.img.src = "images/courseDroite.png";
+                }
+                if (fleches.gauche) {
+                    perso.x -= perso.vitesseX;
+                    //Modifier la source de la feuille de sprites du personnage pour la course vers la gauche
+                    perso.img.src = "images/courseGauche.png";
+                }
+
+                //Si le perso sort par la droite on le ramène à gauche et vice-versa
+                //À droite
+                if (perso.x > leCanvas.width) {
+                    perso.x = -perso.largeur;
+                }
+                //À gauche
+                if (perso.x < -perso.largeur) {
+                    perso.x = leCanvas.width;
+                }
+                if (perso.estEnSaut == true) {
+                    perso.y += perso.vitesseY;
+                //Appliquer un effet de décélération/accélération
+                    perso.vitesseY += perso.gravite;
+                //Si le personnage est retombé...ou revient près de sa position d'origine, on arrête la descente
+                    if (perso.y >= leCanvas.height - perso.hauteur) {
+                    perso.estEnSaut = false;
+                    }
+                }
+                //Dessiner le personnage
+                ctx.drawImage(
+                    perso.img,
+                    perso.sourceX,
+                    0,
+                    perso.largeur,
+                    perso.hauteur,
+                    perso.x,
+                    perso.y,
+                    perso.largeur,
+                    perso.hauteur
+                );
+            }
+
+           //Fonction pour déplacer les Spiders
+           function deplacerLesSpiders() {
+                //Tous les spiders descendent du ciel!!!
+                //On les retire du tableau losrqu'ils quitte le bas du canvas
+                for (let unSpider of lesSpiders) {
+                    //Incrémenter sa vitesse sur l'axe des Y
+                    unSpider.y += unSpider.vitesseY;
+                    //Dessiner le spider
+                    ctx.drawImage(unSpider.img, unSpider.x, unSpider.y);
+
+                    //On retire ce spider du tableau si il dépasse les limites du canvas
+                    if (unSpider.y > leCanvas.height) {
+                        //On identifie l'index de cette roche
+                        let index = lesSpiders.indexOf(unSpider);
+                        //L'enlever du tableau des spiders
+                        lesSpiders.splice(index, 1);
+                    }
+
+                    console.log("Nombre de spiders :", lesSpiders.length);
+                }
+            }
+
+
+            //Fonction pour gérer la vignette à afficher pour l'animation du personnage
+            function gererImageDePerso() {
+                //Définir la coordonnée sourceX de la vignette à afficher
+                perso.sourceX = perso.indexVignette * perso.largeur;
+
+                //Incrémenter et gérer l’index de la prochaine vignette à afficher
+                perso.indexVignette += 1;
+
+                if (perso.indexVignette == perso.nbVignettes) {
+                    perso.indexVignette = 0;
+                }
+            }
+
+            // Détecte quelles touches sont appuyées
+            function presserTouche(event) {
+                //Enlever les comportements par défaut du navigateur
+                event.preventDefault();
+
+                //Enregistrer si une touche gauche/droite est pressée
+                if (event.keyCode == 39) {
+                    //flèche droite
+                    fleches.droite = true;
+                }
+                if (event.keyCode == 37) {
+                    //flèche gauche
+                    fleches.gauche = true;
+                }
+                if (event.keyCode == 38) {
+                    fleches.haut = true;
+                }
+                if (event.keyCode == 38) { //flèche haut
+                    if (perso.estEnSaut == false) {
+                    perso.estEnSaut = true;
+                    perso.vitesseY = -15;
+                    sonJump.play();
+                    }
+                }
+            }
+
+            // Détecte quelles touches sont relâchées
+            function relacherTouche(event) {
+                //Enlever les comportements par défaut du navigateur
+                event.preventDefault();
+
+                //Enregistrer si une touche gauche/droite est relâchée
+                if (event.keyCode == 39) {
+                    //flèche droite
+                    fleches.droite = false;
+                    //Modifier la source de la feuille de sprites du personnage pour l'arrêt vers la droite
+                    perso.img.src = "images/arretDroite.png";
+                }
+                if (event.keyCode == 37) {
+                    //flèche gauche
+                    fleches.gauche = false;
+                    //Modifier la source de la feuille de sprites du personnage pour l'arrêt vers la gauche
+                    perso.img.src = "images/arretGauche.png";
+                }
+                //On débute le jeu s'il n'est pas commencé: touche espace = 32
+                if( !debutJeu && event.keyCode == 32){
+                    debuterJeu();
+                    debutJeu= true;
+                }
+                if (event.keyCode == 82 && finJeu == true) {
+                    document.location.reload();
+                }
+            }
+
+            //Fonction pour dessiner le score
+            function afficherScore() {
+                //Styles du texte      
+                ctx.font = "bold 32px Calibri";
+                ctx.textBaseline = "top";
+                ctx.fillStyle = "#f00f00";
+                ctx.textAlign = "right";
+                ctx.fillText("SCORE : " + score, leCanvas.width / 1.005, 10);
+            }
+
+
+            /*//////////////////////////////////////////////////////////////////////////////
+                                        FONCTION DETECTER COLLISION
+            //////////////////////////////////////////////////////////////////////////////*/
+            //Fonction pour detecter la collision
+            function detecterCollision(leRectangle, leCercle) {
+            //Calculs du rayon et des coordonnées x et y du centre du cercle
+            let rayonCercle = leCercle.largeur / 2;
+            let centreX_duCercle = leCercle.x + rayonCercle;
+            let centreY_duCercle = leCercle.y + rayonCercle;
+
+            //La problématique est avec les coins des images
+            //Il faut donc vérifier de quel côté du rectangle se situe le cercle?
+            //Le code va d'abord tester quel coin du rectangle est le plus proche du cercle,
+            let coinX = centreX_duCercle;
+            let coinY = centreY_duCercle;
+            if (centreX_duCercle < leRectangle.x) {
+                coinX = leRectangle.x; //coin gauche
+            } else if (centreX_duCercle > leRectangle.x + leRectangle.largeur) {
+                coinX = leRectangle.x + leRectangle.largeur; // coin droit
+            }
+
+            if (centreY_duCercle < leRectangle.y) {
+                coinY = leRectangle.y; // coin supérieur
+            } else if (centreY_duCercle > leRectangle.y + leRectangle.hauteur) {
+                coinY = leRectangle.y + leRectangle.hauteur; // coin inférieur
+            }
+
+            //Maintenant que nous savons quel coin vérifier, nous utilisons
+            //le théorème de Pythagore en utilisant le centre du cercle et le coin identifié
+            let distanceX = centreX_duCercle - coinX;
+            let distanceY = centreY_duCercle - coinY;
+            let distanceXY = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+            //I y a une détection de collision si la distanceXY est plus petite que le rayon du cercle.
+            if (distanceXY <= rayonCercle) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        </script>
+    </body>
+</html>

@@ -168,6 +168,12 @@
                 //Deplacer les roches
                 deplacerLesSpiders();
 
+                if (nombreVies == 1) {
+                    leCanvas.style.backgroundImage = "url('images/backgroundSombre.png')";
+                }   else {
+                    leCanvas.style.backgroundImage = "url('images/backgroundVide.png')";
+                }
+
                 for (let unSpider of lesSpiders) {
                     let siCollisionVivichEtSpider = detecterCollision(perso, unSpider);
                     if (siCollisionVivichEtSpider == true) {
@@ -244,8 +250,8 @@
                     urlImage: "images/spider.png",
                     x: entierHasard(0, leCanvas.width - 48),
                     y: -48,
-                    largeur: 40,
-                    hauteur: 40,
+                    largeur: 38,
+                    hauteur: 38,
                     vitesseY: entierHasard(3, 7),
                 };
                 //Charger l'image de ce spider
@@ -451,3 +457,4 @@
         </script>
     </body>
 </html>
+

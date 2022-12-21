@@ -106,12 +106,13 @@
             let lesSpiders = [];
 
             //Les sons
-            let sonFinJeu = new Audio("sons/sonFinJeu.mp3");
-            let sonCollisionSpider = new Audio("sons/sonFinJeu.mp3")
+            let sonFinJeu = new Audio("sons/GameOver.wav");
+            let sonCollisionSpider = new Audio("sons/sonHit.mp3")
             let sonCollecteFruit = new Audio("sons/EatingSound2.wav");
             let musique = new Audio("sons/musiqueArcade.wav");
             let sonJump = new Audio("sons/Jump.wav");
             let sonViePlus = new Audio("sons/Power_up.wav");
+           
             
             //Variable pour gérer le début du jeu : debutJeu
             let debutJeu= false;
@@ -214,7 +215,7 @@
                 //Modifier la position en X au hasard dans les limites du canvas
                 fruit.x = Math.random() * (leCanvas.width - fruit.largeur);
     
-                //Pour obtenir les noms fruit1.png ou fruit2.png ou fruit3.png
+                //Pour obtenir les noms fruit1.png ou fruit2.png ou fruit3.png ou fruit4.png
                 fruit.img.src = "images/fruit" + Math.ceil(Math.random() * 4) + ".png";
 
                 //Augmenter de 1 le score pour le nombre de fruits ramassés
@@ -257,7 +258,7 @@
                 //Charger l'image de ce spider
                 spider.img.src = spider.urlImage;
 
-                //Mettre cette roche dans le tableau des spiders
+                //Mettre ce spider dans le tableau des spiders
                 lesSpiders.push(spider);
             }
 
@@ -272,7 +273,7 @@
                 //Calculer les futures positions du perso et définir la feuille de sprites à afficher
                 if (fleches.droite) {
                     perso.x += perso.vitesseX;
-                    //Modifier la source de la feuille de sprites du blockynnage pour la course vers la droite
+                    //Modifier la source de la feuille de sprites de Vivich pour la course vers la droite
                     perso.img.src = "images/courseDroite.png";
                 }
                 if (fleches.gauche) {
@@ -457,4 +458,5 @@
         </script>
     </body>
 </html>
+
 
